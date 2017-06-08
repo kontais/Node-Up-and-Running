@@ -1,0 +1,436 @@
+chapter: Core APIs
+==================
+Example: Listening for an event with the on method
+
+server.on('event', function(a, b, c) {
+  //do things
+});
+    
+    
+====================================
+Example: Creating a new class that supports events with
+        EventEmitter
+
+var utils = require('utils'),
+    EventEmitter = require('events').EventEmitter;
+
+var Server = function() {
+  console.log('init');
+};
+
+utils.inherits(Server, EventEmitter);
+
+var s = new Server();
+
+s.on('abc', function() {
+  console.log('abc');
+});
+    
+    
+====================================
+Example: Emitting an event
+
+s.emit('abc');
+    
+    
+====================================
+Example: Passing parameters when emitting an event
+
+s.emit('abc', a, b, c);
+    
+    
+====================================
+Example: Calling event listeners from emit
+
+if (arguments.length <= 3) {
+  // fast case
+  handler.call(this, arguments[1], arguments[2]);
+} else {
+  // slower
+  var args = Array.prototype.slice.call(arguments, 1);
+  handler.apply(this, args);
+}
+    
+    
+====================================
+Example: The changes in context caused by EventEmitter
+
+> var EventEmitter = require('events').EventEmitter,
+...     util = require('util');
+> 
+> var Server = function() {};
+> util.inherits(Server, EventEmitter);
+> Server.prototype.outputThis= function(output) {
+...   console.log(this);
+...   console.log(output); 
+... };
+[Function]
+> 
+> Server.prototype.emitOutput = function(input) { 
+...   this.emit('output', input);
+... };
+[Function]
+> 
+> Server.prototype.callEmitOutput = function() {
+...   this.emitOutput('innerEmitOutput');
+... };
+[Function]
+> 
+> var s = new Server();
+> s.on('output', s.outputThis);
+{ _events: { output: [Function] } }
+> s.emitOutput('outerEmitOutput');
+{ _events: { output: [Function] } }
+outerEmitOutput
+> s.callEmitOutput();
+{ _events: { output: [Function] } }
+innerEmitOutput
+> s.emit('output', 'Direct');
+{ _events: { output: [Function] } }
+Direct
+true
+>
+    
+    
+====================================
+Example: A simple, and very short, HTTP server
+
+require('http').createServer(function(req,res){res.writeHead(200, {}); 
+res.end('hello world');}).listen(8125);
+    
+    
+====================================
+Example: A simple, but more descriptive, HTTP server
+
+var http = require('http');
+var server = http.createServer();
+var handleReq = function(req,res){
+  res.writeHead(200, {});
+  res.end('hello world');
+};
+server.on('request', handleReq);
+server.listen(8125);
+    
+    
+====================================
+Example: Creating an HTTP request
+
+var http = require('http');
+
+var opts = {
+  host: 'www.google.com'
+  port: 80,
+  path: '/',
+  method: 'GET'
+};
+
+var req = http.request(opts, function(res) {
+  console.log(res);
+  res.on('data', function(data) {
+    console.log(data);
+  });
+});
+
+req.end();
+    
+    
+====================================
+Example: Simple HTTP GET requests
+
+var http = require('http');
+
+var opts = {
+  host: 'www.google.com'
+  port: 80,
+  path: '/',
+};
+
+var req = http.get(opts, function(res) {
+  console.log(res);
+  res.on('data', function(data) {
+    console.log(data);
+  });
+});
+    
+    
+====================================
+Example: Comparing raw Buffer output to output with a specified
+          encoding
+
+> var http = require('http');
+> var req = http.get({host:'www.google.com', port:80, path:'/'}, function(res) { 
+... console.log(res); 
+... res.on('data', function(c) { console.log(c); }); 
+... });
+> <Buffer 3c 21 64 6f 63 74 79 70
+
+...
+
+65 2e 73 74>
+<Buffer 61 72 74 54 69
+
+...
+
+69 70 74 3e>
+
+>
+> var req = http.get({host:'www.google.com', port:80, path:'/'}, function(res) { 
+... res.setEncoding('utf8'); 
+... res.on('data', function(c) { console.log(c); }); 
+... });
+> <!doctype html><html><head><meta http-equiv="content-type
+
+...
+
+load.t.prt=(f=(new Date).getTime());
+})();
+</script>
+
+>
+    
+    
+====================================
+Example: Writing data to an upstream service
+
+var options = {
+  host: 'www.example.com',
+  port: 80,
+  path: '/submit',
+  method: 'POST'
+};
+
+var req = http.request(options, function(res) {
+  res.setEncoding('utf8');
+  res.on('data', function (chunk) {
+    console.log('BODY: ' + chunk);
+  });
+});
+
+req.write("my data");
+req.write("more of my data");
+
+req.end();
+    
+    
+====================================
+Example: Parsing a URL using the URL module
+
+> var URL = require('url');
+> var myUrl = "http://www.nodejs.org/some/url/?with=query&param=that&are=awesome
+#alsoahash";
+> myUrl
+'http://www.nodejs.org/some/url/?with=query&param=that&are=awesome#alsoahash'
+> parsedUrl = URL.parse(myUrl);
+{ href: 'http://www.nodejs.org/some/url/?with=query&param=that&are=awesome#alsoahash'
+, protocol: 'http:'
+, slashes: true
+, host: 'www.nodejs.org'
+, hostname: 'www.nodejs.org'
+, hash: '#alsoahash'
+, search: '?with=query&param=that&are=awesome'
+, query: 'with=query&param=that&are=awesome'
+, pathname: '/some/url/'
+}
+> parsedUrl = URL.parse(myUrl, true);
+{ href: 'http://www.nodejs.org/some/url/?with=query&param=that&are=awesome#alsoahash'
+, protocol: 'http:'
+, slashes: true
+, host: 'www.nodejs.org'
+, hostname: 'www.nodejs.org'
+, hash: '#alsoahash'
+, search: '?with=query&param=that&are=awesome'
+, query:
+   { with: 'query'
+   , param: 'that'
+   , are: 'awesome'
+   }, pathname: '/some/url/'
+}
+>
+    
+    
+====================================
+Example: Parsing a query string with the querystring module in Node
+        REPL
+
+> var qs = require('querystring');
+> qs.parse('a=1&b=2&c=d');
+{ a: '1', b: '2', c: 'd' }
+>
+    
+    
+====================================
+Example: Encoding an object into a query string
+
+> var myObj = {'a':1, 'b':5, 'c':'cats', 'func': function(){console.log('dogs')}}
+> qs.encode(myObj);
+'a=1&b=5&c=cats&func='
+>
+    
+    
+====================================
+Example: Creating a readable file stream
+
+var fs = require('fs');
+var filehandle = fs.readFile('data.txt', function(err, data) {
+  console.log(data)
+});
+    
+    
+====================================
+Example: Using the spooling pattern to read a complete stream
+
+          //abstract stream
+var spool = "";
+stream.on('data', function(data) {
+  spool += data;
+});
+stream.on('end', function() {
+  console.log(spool);
+});
+    
+    
+====================================
+Example: Reading and deleting a file asynchronously—but all
+        wrong
+
+var fs = require('fs');
+
+fs.readFile('warandpeace.txt', function(e, data) {
+  console.log('War and Peace: ' + data);
+});
+
+fs.unlink('warandpeace.txt');
+    
+    
+====================================
+Example: Reading and deleting a file asynchronously using nested
+        callbacks
+
+var fs = require('fs');
+
+fs.readFile('warandpeace.txt', function(e, data) {
+  console.log('War and Peace: ' + data);
+  fs.unlink('warandpeace.txt');
+});
+    
+    
+====================================
+Example: Representing 0 through 255 in a byte
+
+128 64 32 16 8 4 2 1
+--- -- -- -- - - - -
+0   0  0  0  0 0 0 0 = 0
+
+128 64 32 16 8 4 2 1
+--- -- -- -- - - - -
+1   1  1  1  1 1 1 1 = 255
+
+128 64 32 16 8 4 2 1
+--- -- -- -- - - - -
+1   0  0  1  0 1 0 1 = 149
+    
+    
+====================================
+Example: Representing 0 through 255 with hex notation
+
+Hex to Decimal:
+
+0 1 2 3 4 5 6 7 8 9 A  B  C  D  E  F
+- - - - - - - - - - -- -- -- -- -- --
+0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+
+
+Counting in hex:
+
+16 1
+-- -
+0  0 = 0
+
+16 1
+-- -
+F  F = 255
+
+16 1
+-- -
+9  5 = 149
+    
+    
+====================================
+Example: Creating a 3-byte Buffer from an array of octets
+
+> new Buffer([255,0,149]);
+<Buffer ff 00 95>
+>
+    
+    
+====================================
+Example: Creating a Buffer using byte length
+
+> new Buffer(10);
+<Buffer e1 43 17 05 01 00 00 00 41 90>
+>
+    
+    
+====================================
+Example: Creating Buffers using strings
+
+> new Buffer('foobarbaz');
+<Buffer 66 6f 6f 62 61 72 62 61 7a>
+> new Buffer('foobarbaz', 'ascii');
+<Buffer 66 6f 6f 62 61 72 62 61 7a>
+> new Buffer('foobarbaz', 'utf8');
+<Buffer 66 6f 6f 62 61 72 62 61 7a>
+> new Buffer('é');
+<Buffer c3 a9>
+> new Buffer('é', 'utf8');
+<Buffer c3 a9>
+> new Buffer('é', 'ascii');
+<Buffer e9>
+>
+    
+    
+====================================
+Example: Buffer.write( ) and partial characters
+
+> var b = new Buffer(1);
+> b
+<Buffer 00>
+> b.write('a');
+1
+> b
+<Buffer 61>
+> b.write('é');
+0
+> b
+<Buffer 61>
+>
+    
+    
+====================================
+Example: Writing a string into a Buffer including a terminator
+
+> var b = new Buffer(5);
+> b.write('fffff');
+5
+> b
+<Buffer 66 66 66 66 66>
+> b.write('ab', 1);
+2
+> b
+<Buffer 66 61 62 00 66>
+>
+    
+    
+====================================
+Example: Outputting with console.log
+
+> foo = {};
+{}
+> foo.bar = function() {1+1};
+[Function]
+> console.log(foo);
+{ bar: [Function] }
+>
+    
+    
+==================

@@ -1,0 +1,1105 @@
+chapter: Data Access
+==================
+Example: Retrieving a list of CouchDB stores via HTTP
+
+var http = require('http');
+
+http.createServer(function (req, res) {
+  var client = http.createClient(5984, "127.0.0.1");
+  var request = client.request("GET", "/_all_dbs");
+  request.end();
+
+  request.on("response", function(response) {
+    var responseBody = "";
+
+    response.on("data", function(chunk) {
+      responseBody += chunk;
+    });
+
+    response.on("end", function() {
+      res.writeHead(200, {'Content-Type': 'text/plain'});
+      res.write(responseBody);
+      res.end();
+    });
+  });
+}).listen(8080);
+    
+    
+====================================
+Example: Creating a CouchDB database
+
+  var client = http.createClient(5984, "127.0.0.1")
+  var request = client.request("PUT", "/dbname");
+  request.end();
+
+  request.on("response", function(response) {
+    response.on("end", function() {
+      if ( response.statusCode == 201 ) {
+        console.log("Database successfully created.");
+      } else {
+        console.log("Could not create database.");
+      }
+    });
+  });
+    
+    
+====================================
+Example: Deleting a CouchDB database
+
+  var client = http.createClient(5984, "127.0.0.1")
+  var request = client.request("DELETE", "/dbname");
+  request.end();
+
+  request.on("response", function(response) {
+    response.on("end", function() {
+      if ( response.statusCode == 200 ) {
+        console.log("Deleted database.");
+      } else {
+        console.log("Could not delete database.");
+      }
+    });
+  });
+    
+    
+====================================
+Example: A simple CouchDB database creation form
+
+var http = require('http');
+var qs = require('querystring');
+var url = require('url');
+
+var dbHost = "127.0.0.1";
+var dbPort = 5984;
+
+deleteDb = function(res, dbpath) {
+  var client = http.createClient(dbPort, dbHost)
+  var request = client.request("DELETE", dbpath);
+  request.end();
+
+  request.on("response", function(response) {
+    response.on("end", function() {
+      if ( response.statusCode == 200 ) {
+        showDbs(res, "Deleted database.");
+      } else {
+        showDbs(res, "Could not delete database.");
+      }
+    });
+  });
+}
+
+createDb = function(res, dbname) {
+  var client = http.createClient(dbPort, dbHost)
+  var request = client.request("PUT", "/" + dbname);
+  request.end();
+
+  request.on("response", function(response) {
+    response.on("end", function() {
+      if ( response.statusCode == 201 ) {
+        showDbs(res, dbname + " created.");
+      } else {
+        showDbs(res, "Could not create " + dbname);
+      }
+    });
+  });
+}
+
+showDbs = function(res, message) {
+  var client = http.createClient(dbPort, dbHost);
+  var request = client.request("GET", "/_all_dbs");
+  request.end();
+
+  request.on("response", function(response) {
+    var responseBody = "";
+
+    response.on("data", function(chunk) {
+      responseBody += chunk;
+    });
+
+    response.on("end", function() {
+      res.writeHead(200, {'Content-Type': 'text/html'});
+      res.write("<form method='post'>");
+      res.write("New Database Name: <input type='text' name='dbname' />");
+      res.write("<input type='submit' />");
+      res.write("</form>");
+      if ( null != message ) res.write("<h1>" + message + "</h1>");
+
+      res.write("<h1>Active databases:</h1>");
+      res.write("<ul>");
+      var dblist = JSON.parse(responseBody);
+      for ( i = 0; i < dblist.length; i++ ) {
+        var dbname = dblist[i];
+        res.write("<li><a href='/" + dbname + "'>"+dbname+"</a></li>");
+      }
+      res.write("</ul>");
+      res.end();
+    });
+  });
+};
+
+http.createServer(function (req, res) {
+  if ( req.method == 'POST' ) {
+    // Parse the request
+    var body = '';
+    req.on('data', function (data) {
+      body += data;
+    });
+    req.on('end', function () {
+      var POST = qs.parse(body);
+      var dbname = POST['dbname'];
+      if ( null != dbname ) {
+        // Create the DB
+        createDb(res,dbname);
+      } else {
+        showDbs(res, "Bad DB name, cannot create database.");
+      }
+    });
+  } else {
+    var path = url.parse(req.url).pathname;
+    if ( path != "/" ) {
+      deleteDb(res,path);
+    } else {
+      showDbs(res);
+    }
+  }
+}).listen(8080);
+    
+    
+====================================
+npm install felix-couchdb
+    
+    
+====================================
+Example: Creating a table in CouchDB
+
+var dbHost = "127.0.0.1";
+var dbPort = 5984;
+var dbName = 'users';
+
+var couchdb = require('felix-couchdb');
+var client = couchdb.createClient(dbPort, dbHost);
+var db = client.db(dbName);
+
+db.exists(function(err, exists) {
+  if (!exists) {
+    db.create();
+    console.log('Database ' + dbName + ' created.');
+  } else {
+    console.log('Database ' + dbName + ' exists.');
+  }
+});
+    
+    
+====================================
+Example: Creating a document in CouchDB
+
+var dbHost = "127.0.0.1";
+var dbPort = 5984;
+var dbName = 'users';
+
+var couchdb = require('felix-couchdb');
+var client = couchdb.createClient(dbPort, dbHost);
+
+var user = {
+  name: {
+    first: 'John',
+    last: 'Doe'
+  }
+}
+
+var db = client.db(dbName);
+
+db.saveDoc('jdoe', user, function(err, doc) {
+  if( err) {
+    console.log(JSON.stringify(err));
+  } else {
+    console.log('Saved user.');
+  }
+});
+    
+    
+====================================
+Example: Retrieving a record from CouchDB
+
+var dbHost = "127.0.0.1";
+var dbPort = 5984;
+var dbName = 'users';
+
+var couchdb = require('felix-couchdb');
+var client = couchdb.createClient(dbPort, dbHost);
+
+var db = client.db(dbName);
+
+db.getDoc('jdoe', function(err,doc) {
+  console.log(doc);
+});
+    
+    
+====================================
+Example: Updating a record in CouchDB
+
+var dbHost = "127.0.0.1";
+var dbPort = 5984;
+var dbName = 'users';
+
+var couchdb = require('felix-couchdb');
+var client = couchdb.createClient(dbPort, dbHost);
+
+var db = client.db(dbName);
+
+db.getDoc('jdoe', function(err,doc) {
+  doc.name.first = 'Johnny';
+  doc.email = 'jdoe@johndoe.com';
+
+  db.saveDoc('jdoe', doc );
+
+  db.getDoc('jdoe', function(err,revisedUser) {
+    console.log(revisedUser);
+  });
+});
+    
+    
+====================================
+Example: Deleting from CouchDB
+
+var dbHost = "127.0.0.1";
+var dbPort = 5984;
+var dbName = 'users';
+
+var couchdb = require('felix-couchdb');
+var client = couchdb.createClient(dbPort, dbHost);
+
+var db = client.db(dbName);
+
+db.getDoc('jdoe', function(err,doc) {
+  db.removeDoc(doc._id, doc._rev);
+});
+    
+    
+====================================
+npm install redis
+    
+    
+====================================
+Example: A basic get and set operation against Redis
+
+var redis = require('redis'),
+    client = redis.createClient();
+
+client.on("error", function (err) {
+    console.log("Error " + err);
+});
+
+console.log("Setting key1");
+client.set("key1", "My string!", redis.print);
+console.log("Getting key1");
+client.get("key1", function (err, reply) {
+    console.log("Results for key1:");
+    console.log(reply);
+    client.end();
+});
+    
+    
+====================================
+Error Error: Redis connection to 127.0.0.1:6379 failed - ECONNREFUSED, 
+Connection refused
+    
+    
+====================================
+Example: Setting hash values one key at a time
+
+var redis = require('redis'),
+    client = redis.createClient();
+
+client.on("error", function (err) {
+    console.log("Error " + err);
+});
+
+console.log("Setting user hash");
+client.hset("user", "username", "johndoe");
+client.hset("user", "firstname", "john");
+client.hset("user", "lastname", "doe");
+
+client.hkeys("user", function(err,replies) {
+    console.log("Results for user:");
+    console.log(replies.length + " replies:");
+    replies.forEach(function (reply, i) {
+        console.log(i + ": " + reply );
+    });
+    client.end();
+});
+    
+    
+====================================
+Example: Setting multiple hash values simultaneously
+
+var redis = require('redis'),
+    client = redis.createClient();
+
+client.on("error", function (err) {
+    console.log("Error " + err);
+});
+
+console.log("Setting user hash");
+client.hmset("user", "username", "johndoe", "firstname", "john", "lastname", "doe");
+
+client.hkeys("user", function(err,replies) {
+    console.log("Results for user:");
+    console.log(replies.length + " replies:");
+    replies.forEach(function (reply, i) {
+        console.log(i + ": " + reply );
+    });
+    client.end();
+});
+    
+    
+====================================
+Example: Setting multiple hash values using an object
+
+var redis = require('redis'),
+    client = redis.createClient();
+
+client.on("error", function (err) {
+    console.log("Error " + err);
+});
+
+var user = {
+   username: 'johndoe',
+   firstname: 'John',
+   lastname: 'Doe',
+   email: 'john@johndoe.com',
+   website: 'http://www.johndoe.com'
+}
+
+console.log("Setting user hash");
+client.hmset("user", user);
+
+client.hkeys("user", function(err,replies) {
+    console.log("Results for user:");
+    console.log(replies.length + " replies:");
+    replies.forEach(function (reply, i) {
+        console.log(i + ": " + reply );
+    });
+    client.end();
+});
+    
+    
+====================================
+Example: Using a list in Redis
+
+var redis = require('redis'),
+    client = redis.createClient();
+
+client.on("error", function (err) {
+    console.log("Error " + err);
+});
+
+client.lpush("pendingusers", "user1" );
+client.lpush("pendingusers", "user2" );
+client.lpush("pendingusers", "user3" );
+client.lpush("pendingusers", "user4" );
+
+client.rpop("pendingusers", function(err,username) {
+  if( !err ) {
+    console.log("Processing " + username);
+  }
+  client.end();
+});
+    
+    
+====================================
+Example: Using Redis’s set commands
+
+var redis = require('redis'),
+    client = redis.createClient();
+
+client.on("error", function (err) {
+    console.log("Error " + err);
+});
+
+client.sadd( "myteam", "Neil" );
+client.sadd( "myteam", "Peter" );
+client.sadd( "myteam", "Brian" );
+client.sadd( "myteam", "Scott" );
+client.sadd( "myteam", "Brian" );
+
+client.smembers( "myteam", function(err, members) {
+  console.log( members );
+  client.end();
+});
+    
+    
+====================================
+Example: Ranking a sorted list using Redis
+
+var redis = require('redis'),
+    client = redis.createClient();
+
+client.on("error", function (err) {
+    console.log("Error " + err);
+});
+
+client.zadd( "contestants", 60, "Deborah" );
+client.zadd( "contestants", 65, "John" );
+client.zadd( "contestants", 26, "Patrick" );
+client.zadd( "contestants", 62, "Mike" );
+client.zadd( "contestants", 24, "Courtney" );
+client.zadd( "contestants", 39, "Jennifer" );
+client.zadd( "contestants", 26, "Jessica" );
+client.zadd( "contestants", 46, "Joe" );
+client.zadd( "contestants", 63, "Bonnie" );
+client.zadd( "contestants", 27, "Vinny" );
+client.zadd( "contestants", 27, "Ramon" );
+client.zadd( "contestants", 51, "Becky" );
+client.zadd( "contestants", 41, "Sunny" );
+client.zadd( "contestants", 47, "Antone" );
+client.zadd( "contestants", 40, "John" );
+
+client.zcard( "contestants", function( err, length ) {
+  if( !err ) {
+    var contestantCount = length;
+    var membersPerTeam = Math.ceil( contestantCount / 3 );
+    client.zrange( "contestants", membersPerTeam * 0, membersPerTeam * 1 - 1,
+      function(err, values) {
+        console.log('Young team: ' + values);
+      });
+    client.zrange( "contestants", membersPerTeam * 1, membersPerTeam * 2 - 1,
+      function(err, values) {
+        console.log('Middle team: ' + values);
+      });
+    client.zrange( "contestants", membersPerTeam * 2, contestantCount,
+      function(err, values) {
+        console.log('Elder team: ' + values);
+        client.end();
+      });
+  }
+});
+    
+    
+====================================
+Example: Subscribing and publishing with Redis
+
+var redis = require("redis"),
+    talkativeClient = redis.createClient(),
+    pensiveClient = redis.createClient();
+
+pensiveClient.on("subscribe", function (channel, count) {
+  talkativeClient.publish( channel, "Welcome to " + channel );
+  talkativeClient.publish( channel, "You subscribed to " + count + " channels!" );
+});
+
+pensiveClient.on("unsubscribe", function(channel, count) {
+  if (count === 0) {
+    talkativeClient.end();
+    pensiveClient.end();
+  }
+});
+
+pensiveClient.on("message", function (channel, message) {
+  console.log(channel + ': ' + message);
+});
+
+pensiveClient.on("ready", function() {
+  pensiveClient.subscribe("quiet channel", "peaceful channel", "noisy channel" );
+  setTimeout(function() {
+    pensiveClient.unsubscribe("quiet channel", "peaceful channel", "noisy channel" );
+  }, 1000);
+});
+    
+    
+====================================
+Example: Snippet from Redis password configuration
+
+################################## SECURITY ###################################
+
+# Require clients to issue AUTH <PASSWORD> before processing any other
+# commands.  This might be useful in environments in which you do not trust
+# others with access to the host running redis-server.
+#
+# This should stay commented out for backward compatibility and because most
+# people do not need auth (e.g., they run their own servers).
+#
+requirepass hidengoseke
+    
+    
+====================================
+Example: Authenticating Redis
+
+var redis = require('redis'),
+    client = redis.createClient();
+
+client.auth("hidengoseke");
+    
+    
+====================================
+Example: Renaming Redis commands
+
+# Change CONFIG command to something obscure
+rename-command CONFIG 923jfiosflkja98rufadskjgfwefu89awtsga09nbhsdalkjf3p49
+
+# Clear CONFIG command, so no one can use it
+rename-command CONFIG ""
+    
+    
+====================================
+npm install mongodb
+    
+    
+====================================
+Example: Connecting to a MongoDB database and writing a
+            record
+
+var mongo = require('mongodb');
+var host = "localhost";
+var port = mongo.Connection.DEFAULT_PORT;
+var db = new mongo.Db('node-mongo-examples', new mongo.Server(host, port, {}), {});
+
+db.open(function(err,db) {
+  db.collection('users', function(err,collection) {
+    collection.insert({username:'Bilbo',firstname:'Shilbo'}, function(err, docs) {
+      console.log(docs);
+      db.close();
+    });
+  });
+});
+    
+    
+====================================
+npm install mongo
+    
+    
+====================================
+Example: Defining schemas with Mongoose
+
+var mongoose = require('mongoose')
+
+var Schema   = mongoose.Schema,
+    ObjectId = Schema.ObjectId
+
+var AuthorSchema = new Schema({
+    name: {
+        first   : String,
+        last    : String,
+        full    : String
+    },
+    contact: {
+        email   : String,
+        twitter : String,
+        google  : String
+    },
+    photo       : String
+});
+
+var CommentSchema = new Schema({
+    commenter   : String,
+    body        : String,
+    posted      : Date
+});
+
+var ArticleSchema = new Schema({
+    author      : ObjectId,
+    title       : String,
+    contents    : String,
+    published   : Date,
+    comments    : [CommentSchema]
+});
+
+var Author = mongoose.model('Author', AuthorSchema);
+var Article = mongoose.model('Article', ArticleSchema);
+    
+    
+====================================
+Example: Reading and writing records using Mongoose
+
+mongoose.connect('mongodb://localhost:27017/upandrunning', function(err){
+  if (err) {
+    console.log('Could not connect to mongo');
+  }
+});
+
+newAuthor.save(function(err) {
+  if (err) {
+    console.log('Could not save author');
+  } else {
+    console.log('Author saved');
+  }
+});
+
+Author.find(function(err,doc){
+  console.log(doc);
+});
+    
+    
+====================================
+sudo apt-get install libmysqlclient-dev
+    
+    
+====================================
+npm install -g db-mysql
+    
+    
+====================================
+DROP DATABASE IF EXISTS upandrunning;
+
+CREATE DATABASE upandrunning;
+
+GRANT ALL PRIVILEGES ON upandrunning.* TO 'dev'@'%' IDENTIFIED BY 'dev';
+
+USE upandrunning;
+
+CREATE TABLE users( 
+   id int auto_increment primary key, 
+   user_login varchar(25), 
+   user_nicename varchar(75) 
+);
+    
+    
+====================================
+Example: Selecting from MySQL
+
+var mysql = require( 'db-mysql' );
+
+var connectParams = {
+  'hostname': 'localhost',
+  'user': 'dev',
+  'password': 'dev',
+  'database': 'upandrunning'
+}
+
+var db = new mysql.Database( connectParams );
+
+db.connect(function(error) {
+  if ( error ) return console.log("Failed to connect");
+
+  this.query()
+    .select(['id', 'user_login'])
+    .from('users')
+    .execute(function(error, rows, columns) {
+      if ( error ) {
+        console.log("Error on query");
+      } else {
+        console.log(rows);
+      }
+    });
+});
+    
+    
+====================================
+Example: Inserting into MySQL
+
+var mysql = require( 'db-mysql' );
+
+var connectParams = {
+  'hostname': 'localhost',
+  'user': 'dev',
+  'password': 'dev',
+  'database': 'upandrunning'
+}
+
+var db = new mysql.Database( connectParams );
+
+db.connect(function(error) {
+  if ( error ) return console.log("Failed to connect");
+
+  this.query()
+    .insert('users', ['user_login'], ['newbie'])
+    .execute(function(error, rows, columns) {
+      if ( error ) {
+        console.log("Error on query");
+        console.log(error);
+      }
+      else console.log(rows);
+    });
+});
+    
+    
+====================================
+Example: Updating data in MySQL
+
+var mysql = require( 'db-mysql' );
+
+var connectParams = {
+  'hostname': 'localhost',
+  'user': 'dev',
+  'password': 'dev',
+  'database': 'unandrunning'
+}
+
+var db = new mysql.Database( connectParams );
+
+db.connect(function(error) {
+  if ( error ) return console.log("Failed to connect");
+
+  this.query()
+         .update('users')
+         .set({'user_nicename': 'New User' })
+         .where('user_login = ?', [ 'newbie' ])
+    .execute(function(error, rows, columns) {
+      if ( error ) {
+        console.log("Error on query");
+        console.log(error);
+      }
+      else console.log(rows);
+  });
+});
+    
+    
+====================================
+Example: Deleting data in MySQL
+
+var mysql = require( 'db-mysql' );
+
+var connectParams = {
+  'hostname': 'localhost',
+  'user': 'dev',  'password': 'dev',
+  'database': 'upandrunning'
+}
+
+var db = new mysql.Database( connectParams );
+
+db.connect(function(error) {
+  if ( error ) return console.log("Failed to connect");
+
+  this.query()
+    .delete()
+    .from('users')
+    .where('user_login = ?', [ 'newbie' ])
+    .execute(function(error, rows, columns) {
+      if ( error ) {
+        console.log("Error on query");
+        console.log(error);
+      }
+      else console.log(rows);
+    });
+});
+    
+    
+====================================
+npm install sequelize
+    
+    
+====================================
+Example: Creating an entity using Sequelize
+
+var Sequelize = require('sequelize');
+
+var db = new Sequelize('upandrunning', 'dev', 'dev', {
+  host: 'localhost'
+});
+
+var Author = db.define('Author', {
+  name: Sequelize.STRING,
+  biography: Sequelize.TEXT
+});
+
+Author.sync().on('success', function() {
+  console.log('Author table was created.');
+}).on('failure', function(error) {
+  console.log('Unable to create author table');
+});
+    
+    
+====================================
+Executing: CREATE TABLE IF NOT EXISTS `Authors` (`name` VARCHAR(255), `biography`
+TEXT, `id` INT NOT NULL auto_increment , `createdAt` DATETIME NOT NULL, `updatedAt`
+DATETIME NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB;
+Author table was created.
+    
+    
+====================================
+Example: Saving records and associations using Sequelize
+
+var Sequelize = require('sequelize');
+
+var db = new Sequelize('upandrunning', 'dev', 'dev', {
+  host: 'localhost'
+});
+
+var Author = db.define('Author', {
+  name: Sequelize.STRING,
+  biography: Sequelize.TEXT
+});
+
+var Book = db.define('Book', {
+  name: Sequelize.STRING
+});
+
+Author.hasMany(Book);
+Book.hasMany(Author);
+
+db.sync().on('success', function() {
+  Book.build({
+    name: 'Through the Storm'
+  }).save().on('success', function(book) {
+    console.log('Book saved');
+    Author.build({
+      name: 'Lynne Spears',
+      biography: 'Author and mother of Britney'
+    }).save().on('success', function(record) {
+      console.log('Author saved.');
+      record.setBooks([book]);
+      record.save().on('success', function() {
+        console.log('Author & Book Relation created');
+      });
+    });
+  }).on('failure', function(error) {
+    console.log('Could not save book');
+  });
+}).on('failure', function(error) {
+  console.log('Failed to sync database');
+});
+    
+    
+====================================
+npm install pg
+    
+    
+====================================
+Example: Selecting data with PostgreSQL
+
+var pg = require('pg');
+
+var connectionString = "pg://dev:dev@localhost:5432/upandrunning";
+pg.connect(connectionString, function(err, client) {
+  if (err) {
+    console.log( err );
+  } else {
+    var sqlStmt = "SELECT username, firstname, lastname FROM users";
+    client.query( sqlStmt, null, function(err, result) {
+      if ( err ) {
+        console.log(err);
+      } else {
+        console.log(result);
+      }
+      pg.end();
+    });
+  }
+});
+    
+    
+====================================
+{ rows:
+   [ { username: 'bshilbo',
+       firstname: 'Bilbo',
+       lastname: 'Shilbo' } ] }
+    
+    
+====================================
+Example: Inserting into PostgreSQL
+
+var pg = require('pg');
+
+var connectionString = "pg://dev:dev@localhost:5432/upandrunning";
+pg.connect(connectionString, function(err, client) {
+  if (err) {
+    console.log( err );
+  } else {
+    var sqlStmt   = "INSERT INTO users( username, firstname, lastname ) ";
+        sqlStmt  += "VALUES ( $1, $2, $3)";
+    var sqlParams = ['jdoe', 'John', 'Doe'];
+    var query = client.query( sqlStmt, sqlParams, function(err, result) {
+      if ( err ) {
+        console.log(err);
+      } else {
+        console.log(result);
+      }
+      pg.end();
+    });
+  }
+});
+    
+    
+====================================
+Example: Updating data in PostgreSQL
+
+var pg = require('pg');
+
+var connectionString = "pg://dev:dev@localhost:5432/upandrunning";
+pg.connect(connectionString, function(err, client) {
+  if (err) {
+    console.log( err );
+  } else {
+    var sqlStmt   = "UPDATE users "
+                  + "SET firstname = $1 "
+                  + "WHERE username = $2";
+    var sqlParams = ['jane', 'jdoe'];
+    var query = client.query( sqlStmt, sqlParams, function(err, result) {
+      if ( err ) {
+        console.log(err);
+      } else {
+        console.log(result);
+      }
+      pg.end();
+    });
+  }
+});
+    
+    
+====================================
+Example: Deleting from PostgreSQL
+
+var pg = require('pg');
+
+var connectionString = "pg://dev:dev@localhost:5432/upandrunning";
+pg.connect(connectionString, function(err, client) {
+  if (err) {
+    console.log( err );
+  } else {
+    var sqlStmt   = "DELETE FROM users WHERE username = $1";
+    var sqlParams = ['jdoe'];
+    var query = client.query( sqlStmt, sqlParams, function(err, result) {
+      if ( err ) {
+        console.log(err);
+      } else {
+        console.log(result);
+      }
+      pg.end();
+    });
+  }
+});
+    
+    
+====================================
+Example: Using the connection pool with node-db
+
+var mysql = require( 'db-mysql' );
+var poolModule = require('generic-pool');
+
+var connectParams = {
+  'hostname': 'localhost',
+  'user': 'dev',
+  'password': 'dev',
+  'database': 'zborowski'
+}
+
+var pool = poolModule.Pool({
+  name : 'mysql',
+  create : function(callback) {
+    var db = new mysql.Database( connectParams );
+    db.connect(function(error) {
+      callback(error, db);
+    });
+  },
+  destroy : function(client) { client.disconnect(); },
+  max     : 10,
+  idleTimeoutMillis : 3000,
+  log : true
+});
+
+pool.acquire(function(error, client) {
+  if ( error ) return console.log("Failed to connect");
+
+  client.query()
+    .select(['id', 'user_login'])
+    .from('wp_users')
+    .execute(function(error, rows, columns) {
+      if ( error ) {
+        console.log("Error on query");
+      } else {
+        console.log(rows);
+      }
+      pool.release(client);
+    });
+});
+    
+    
+====================================
+npm install amqp
+    
+    
+====================================
+Example: AMQP/RabbitMQ usage
+
+var connection = require('amqp').createConnection();
+
+connection.on('ready', function() {
+  console.log('Connected to ' + connection.serverProperties.product);
+  var e = connection.exchange('up-and-running');
+
+  var q = connection.queue('up-and-running-queue');
+
+  q.on('queueDeclareOk', function(args) {
+    console.log('Queue opened');
+    q.bind(e, '#');
+
+    q.on('queueBindOk', function() {
+      console.log('Queue bound');
+
+      q.on('basicConsumeOk', function() {
+        console.log("Consumer has subscribed, publishing message.");
+        e.publish('routingKey', {hello:'world'});
+      });
+    });
+
+    q.subscribe(function(msg) {
+      console.log('Message received:');
+      console.log(msg);
+      connection.end();
+    });
+  });
+});
+    
+    
+====================================
+createConnection({host: 'dev.mycompany.com', port: 5555})
+    
+    
+====================================
+Example: Publishing long jobs with AMQP
+
+var connection = require('amqp').createConnection();
+var count = 0;
+
+connection.on('ready', function() {
+  console.log('Connected to ' + connection.serverProperties.product);
+  var e = connection.exchange('up-and-running');
+
+  var q = connection.queue('up-and-running-queue');
+
+  q.on('queueDeclareOk', function(args) {
+    console.log('Queue opened');
+    q.bind(e, '#');
+
+    q.on('queueBindOk', function() {
+      console.log('Queue bound');
+
+      setInterval(function(){
+        console.log('Publishing message #' + ++count);
+        e.publish('routingKey', {count:count});
+      }, 1000);
+    });
+  });
+});
+    
+    
+====================================
+Example: Processing long jobs with AMQP
+
+var connection = require('amqp').createConnection();
+
+function sleep(milliseconds)
+{
+  var start = new Date().getTime();
+  while (new Date().getTime() < start + milliseconds);
+}
+
+connection.on('ready', function() {
+  console.log('Connected to ' + connection.serverProperties.product);
+
+  var e = connection.exchange('up-and-running');
+  var q = connection.queue('up-and-running-queue');
+
+  q.on('queueDeclareOk', function(args) {
+  q.bind(e,'#');
+
+  q.subscribe({ack:true},function(msg) {
+    console.log('Message received:');
+    console.log(msg.count);
+    sleep(5000);
+    console.log('Processed. Waiting for next message.');
+    q.shift();
+    });
+  });
+});
+    
+    
+==================

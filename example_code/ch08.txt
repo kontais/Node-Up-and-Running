@@ -1,0 +1,38 @@
+chapter: Extending Node
+==================
+Example: A simple module
+
+exports.myMethod = function() { console.log('Method output') };
+exports.property = "blue";
+    
+    
+====================================
+npm search packagename
+    
+    
+====================================
+npm cache clean
+    
+    
+====================================
+npm adduser
+    
+    
+====================================
+npm publish
+    
+    
+====================================
+Example: A simple add-on for Node
+
+#include <v8.h>
+
+using namespace v8;
+
+extern "C" void init (Handle<Object> target) {
+  HandleScope scope;
+  target->Set(String::New("hello"), String::New("world"));
+}
+    
+    
+==================

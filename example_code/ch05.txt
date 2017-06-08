@@ -1,0 +1,729 @@
+chapter: Helper APIs
+==================
+Example: Calling dns.resolve( )
+
+dns.resolve('yahoo.com', 'A', function(e,r) { 
+  if (e) {
+    console.log(e);
+  }
+  console.log(r); 
+} );
+    
+    
+====================================
+Example: Using resolve( ) versus resolveMx( )
+
+var dns = require('dns');
+
+dns.resolve('example.com', 'MX', function(e, r) {
+  if (e) {
+    console.log(e);
+  }
+  console.log(r);
+});
+
+dns.resolveMx('example.com', function(e, r) {
+  if (e) {
+    console.log(e);
+  }
+  console.log(r);
+});
+    
+    
+====================================
+Example: Looking up a single A record with lookup( )
+
+var dns = require('dns');
+
+dns.lookup('google.com', 4, function(e, a) {
+  console.log(a);
+});
+    
+    
+====================================
+Example: Creating a digest using Hash
+
+> var crypto = require('crypto');
+> var md5 = crypto.createHash('md5');
+> md5.update('foo');
+{}
+> md5.digest();
+'¬½\u0018ÛLÂø\\íïeOÌÄ¤Ø'
+>
+    
+    
+====================================
+Example: The lifespan of hashes and getting hex output
+
+> var md5 = crypto.createHash('md5');
+> md5.update('foo');
+{}
+> md5.digest();
+'¬½\u0018ÛLÂø\\íïeOÌÄ¤Ø'
+> md5.digest('hex');
+Error: Not initialized
+    at [object Context]:1:5
+    at Interface.<anonymous> (repl.js:147:22)
+    at Interface.emit (events.js:42:17)
+    at Interface._onLine (readline.js:132:10)
+    at Interface._line (readline.js:387:8)
+    at Interface._ttyWrite (readline.js:564:14)
+    at ReadStream.<anonymous> (readline.js:52:12)
+    at ReadStream.emit (events.js:59:20)
+    at ReadStream._emitKey (tty_posix.js:280:10)
+    at ReadStream.onData (tty_posix.js:43:12)
+> var md5 = crypto.createHash('md5');
+> md5.update('foo');
+{}
+> md5.digest('hex');
+'acbd18db4cc2f85cedef654fccc4a4d8'
+>
+    
+    
+====================================
+Example: Looking at how hash.update( ) concatenates input
+
+> var sha1 = crypto.createHash('sha1');
+> sha1.update('foo');
+{}
+> sha1.update('bar');
+{}
+> sha1.digest('hex');
+'8843d7f92416211de9ebb963ff4ce28125932878'
+> var sha1 = crypto.createHash('sha1');
+> sha1.update('foobar');
+{}
+> sha1.digest('hex');
+'8843d7f92416211de9ebb963ff4ce28125932878'
+>
+    
+    
+====================================
+Example: Creating a PEM-encoded key
+
+Enki:~ $ openssl genrsa -out key.pem 1024
+Generating RSA private key, 1024 bit long modulus
+...++++++
+............................++++++
+e is 65537 (0x10001)
+Enki:~ $
+    
+    
+====================================
+Example: Creating an Hmac digest
+
+> var crypto = require('crypto');
+> var fs = require('fs');
+>
+> var pem = fs.readFileSync('key.pem');
+> var key = pem.toString('ascii');
+> 
+> var hmac = crypto.createHmac('sha1', key);
+> 
+> hmac.update('foo');
+{}
+> hmac.digest('hex');
+'7b058f2f33ca28da3ff3c6506c978825718c7d42'
+>
+    
+    
+====================================
+Example: Extracting a public key certificate from a private key
+
+Enki:~ $ openssl req -key key.pem -new -x509 -out cert.pem 
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [AU]:
+State or Province Name (full name) [Some-State]:
+Locality Name (eg, city) []:
+Organization Name (eg, company) [Internet Widgets Pty Ltd]:
+Organizational Unit Name (eg, section) []:
+Common Name (eg, YOUR name) []:
+Email Address []:
+Enki:~ $ ls cert.pem
+cert.pem
+Enki:~ $
+    
+    
+====================================
+Example: Ciphers and block size
+
+> var crypto = require('crypto');
+> var fs = require('fs');
+>
+> var pem = fs.readFileSync('key.pem');
+> var key = pem.toString('ascii');
+>
+> var cipher = crypto.createCipher('blowfish', key);
+> 
+> cipher.update(new Buffer(4), 'binary', 'hex');
+''
+> cipher.update(new Buffer(4), 'binary', 'hex');
+'ff57e5f742689c85'
+> cipher.update(new Buffer(4), 'binary', 'hex');
+''
+> cipher.final('hex')
+'96576b47fe130547'
+>
+    
+    
+====================================
+Example: Encrypting and decrypting text
+
+> var crypto = require('crypto');
+> var fs = require('fs');
+> 
+> var pem = fs.readFileSync('key.pem');
+> var key = pem.toString('ascii');
+> 
+> var plaintext = new Buffer('abcdefghijklmnopqrstuv');
+> var encrypted = "";
+> var cipher = crypto.createCipher('blowfish', key);
+> ..
+> encrypted += cipher.update(plaintext, 'binary', 'hex');
+> encrypted += cipher.final('hex');
+> 
+> var decrypted = "";
+> var decipher = crypto.createDecipher('blowfish', key);
+> decrypted += decipher.update(encrypted, 'hex', 'binary');
+> decrypted += decipher.final('binary');
+> 
+> var output = new Buffer(decrypted);
+>
+> output
+<Buffer 61 62 63 64 65 66 67 68 69 6a 6b 6c 6d 6e 6f 70 71 72 73 74 75 76>
+> plaintext
+<Buffer 61 62 63 64 65 66 67 68 69 6a 6b 6c 6d 6e 6f 70 71 72 73 74 75 76>
+>
+    
+    
+====================================
+Example: Signing data with Sign
+
+> var sign = crypto.createSign('RSA-SHA256');
+> sign.update('abcdef');
+{}
+> sig = sign.sign(key, 'hex');
+'35eb47af5260a00c7bad26edfbe7732a897a3a03290963e3d17f48331a42...aa81b'
+>
+    
+    
+====================================
+Example: Verifying signatures
+
+> var crypto = require('crypto');
+> var fs = require('fs');
+> 
+> var privatePem = fs.readFileSync('key.pem');
+> var publicPem = fs.readFileSync('cert.pem');
+> var key = privatePem.toString();
+> var pubkey = publicPem.toString();
+> 
+> var data = "abcdef"
+> 
+> var sign = crypto.createSign('RSA-SHA256');
+> sign.update(data);
+{}
+> var sig = sign.sign(key, 'hex');
+> 
+> var verify = crypto.createVerify('RSA-SHA256');
+> verify.update(data);
+{}
+> verify.verify(pubkey, sig, 'hex');
+1
+    
+    
+====================================
+Example: Calling code when Node is exiting
+
+process.on('exit', function () {
+  setTimeout(function () {
+   console.log('This will not run');
+  }, 100);
+  console.log('Bye.');
+});
+    
+    
+====================================
+Example: Trapping an exception with the uncaughtException
+          event
+
+process.on('uncaughtException', function (err) {
+  console.log('Caught exception: ' + err);
+});
+
+setTimeout(function () {
+  console.log('This will still run.');
+}, 500);
+
+// Intentionally cause an exception, but don't catch it.
+nonexistentFunc();
+console.log('This will not run.');
+    
+    
+====================================
+Example: The effect on callbacks of catching exceptions
+
+var http = require('http');
+var server = http.createServer(function(req,res) {
+  res.writeHead(200, {});
+  res.end('response');
+  badLoggingCall('sent response');
+  console.log('sent response');
+});
+
+process.on('uncaughtException', function(e) {
+  console.log(e);
+});
+
+server.listen(8080);
+    
+    
+====================================
+Example: Output of 
+
+Enki:~ $ node ex-test.js 
+{ stack: [Getter/Setter],
+  arguments: [ 'badLoggingCall' ],
+  type: 'not_defined',
+  message: [Getter/Setter] }
+{ stack: [Getter/Setter],
+  arguments: [ 'badLoggingCall' ],
+  type: 'not_defined',
+  message: [Getter/Setter] }
+{ stack: [Getter/Setter],
+  arguments: [ 'badLoggingCall' ],
+  type: 'not_defined',
+  message: [Getter/Setter] }
+{ stack: [Getter/Setter],
+  arguments: [ 'badLoggingCall' ],
+  type: 'not_defined',
+  message: [Getter/Setter] }
+    
+    
+====================================
+Example: The abbreviated listener code for EventEmitter
+
+EventEmitter.prototype.emit = function(type) {
+
+...
+
+  var handler = this._events[type];
+
+...
+
+  } else if (isArray(handler)) {
+    var args = Array.prototype.slice.call(arguments, 1);
+
+    var listeners = handler.slice();
+    for (var i = 0, l = listeners.length; i < l; i++) {
+      listeners[i].apply(this, args);
+    }
+    return true;
+
+...
+
+};
+    
+    
+====================================
+Example: Catching signals to the Node process
+
+// Start reading from stdin so we don't exit.
+process.stdin.resume();
+
+process.on('SIGINT', function () {
+  console.log('Got SIGINT.  Press Control-D to exit.');
+});
+    
+    
+====================================
+Example: Writing stdin to stdout
+
+process.stdin.resume();
+process.stdin.setEncoding('utf8');
+
+process.stdin.on('data', function (chunk) {
+  process.stdout.write('data: ' + chunk);
+});
+
+process.stdin.on('end', function () {
+  process.stdout.write('end');
+});
+    
+    
+====================================
+Example: Writing stdin to stdout using pipe
+
+process.stdin.resume();
+process.stdin.pipe(process.stdout);
+    
+    
+====================================
+Example: A simple script outputting argv
+
+console.log(process.argv);
+    
+    
+====================================
+Example: Running 
+
+Enki:~ $ node argv.js -t 3 -c "abc def" -erf       foo.js
+[ 'node',
+  '/Users/croucher/argv.js',
+  '-t',
+  '3',
+  '-c',
+  'abc def',
+  '-erf',
+  'foo.js' ]
+Enki:~ $
+    
+    
+====================================
+Example: Using process.nextTick( ) to insert callbacks into the event
+          loop
+
+> var http = require('http');
+> var s = http.createServer(function(req, res) {
+... res.writeHead(200, {});
+... res.end('foo');
+... console.log('http response');
+... process.nextTick(function(){console.log('tick')});
+... });
+> s.listen(8000);
+>
+> http response 
+tick
+http response
+tick
+    
+    
+====================================
+Example: nextTick( ) continues after other code’s exceptions
+
+process.on('uncaughtException', function(e) {
+  console.log(e);
+});
+
+process.nextTick(function() {
+  console.log('tick');
+});
+process.nextTick(function() {
+  iAmAMistake();
+  console.log('tock');
+});
+process.nextTick(function() {
+  console.log('tick tock');
+});
+console.log('End of 1st loop');
+    
+    
+====================================
+Example: Results of 
+
+Enki:~ $ node process-next-tick.js 
+End of 1st loop
+tick
+{ stack: [Getter/Setter],
+  arguments: [ 'iAmAMistake' ],
+  type: 'not_defined',
+  message: [Getter/Setter] }
+tick tock
+Enki:~ $
+    
+    
+====================================
+Example: Calling ls with exec( )
+
+var cp = require('child_process');
+
+cp.exec('ls -l', function(e, stdout, stderr) {
+  if(!e) {
+    console.log(stdout);
+    console.log(stderr);
+  }
+});
+    
+    
+====================================
+Example: Default options object for child_process.exec( )
+
+var options = { encoding: 'utf8',
+                timeout: 0,
+                maxBuffer: 200 * 1024,
+                killSignal: 'SIGTERM',
+                setsid: false,
+                cwd: null,
+                env: null };
+    
+    
+====================================
+Example: Restricting the Buffer size on child_process.exec( )
+          calls
+
+> var child = cp.exec('ls', {maxBuffer:1}, function(e, stdout, stderr) {
+... console.log(e);
+... }
+... );
+> { stack: [Getter/Setter],
+  arguments: undefined,
+  type: undefined,
+  message: 'maxBuffer exceeded.' }
+    
+    
+====================================
+Example: Setting a timeout on process.exec( ) calls
+
+> var child = cp.exec('for i in {1..100000};do echo $i;done',
+... {timeout:500, killSignal:'SIGKILL'},
+... function(e, stdout, stderr) {
+...   console.log(e);
+... });
+> { stack: [Getter/Setter], arguments: undefined, type: undefined, message: ... }
+    
+    
+====================================
+Example: Starting child processes using spawn( )
+
+var cp = require('child_process');
+
+var cat = cp.spawn('cat');
+
+cat.stdout.on('data', function(d) {
+  console.log(d.toString());
+});
+cat.on('exit', function() {
+  console.log('kthxbai');
+});
+
+cat.stdin.write('meow');
+cat.stdin.end();
+    
+    
+====================================
+Example: Results of previous example
+
+Enki:~ $ node cat.js 
+meow
+kthxbai
+Enki:~ $
+    
+    
+====================================
+Example: Passing stdin, stdout, and stderr to a child process
+
+var cp = require('child_process');
+
+var child = cp.spawn('cat', [], {customFds:[0, 1, 2]});
+    
+    
+====================================
+Example: Running the previous example and piping in data to
+          stdin
+
+Enki:~ $ echo "foo"
+foo
+Enki:~ $ echo "foo" | node
+
+readline.js:80
+    tty.setRawMode(true);
+        ^
+Error: ENOTTY, Inappropriate ioctl for device
+    at new Interface (readline.js:80:9)
+    at Object.createInterface (readline.js:38:10)
+    at new REPLServer (repl.js:102:16)
+    at Object.start (repl.js:218:10)
+    at Function.runRepl (node.js:365:26)
+    at startup (node.js:61:13)
+    at node.js:443:3
+Enki:~ $ echo "foo" | cat
+foo
+Enki:~ $ echo "foo" | node fds.js 
+foo
+Enki:~ $
+    
+    
+====================================
+Example: Trying to access file descriptor streams fails when custom
+          FDs are passed
+
+var cp = require('child_process');
+var child = cp.spawn('cat', [], {customFds:[0, 1, 2]});
+child.stdout.on('data', function(d) {
+  console.log('data out');
+});
+    
+    
+====================================
+Example: Results of the test
+
+Enki:~ $ echo "foo" | node fds.js 
+
+node.js:134
+        throw e; // process.nextTick error, or 'error' event on first tick
+ foo
+       ^
+TypeError: Cannot call method 'on' of null
+    at Object.<anonymous> (/Users/croucher/fds.js:3:14)
+    at Module._compile (module.js:404:26)
+    at Object..js (module.js:410:10)
+    at Module.load (module.js:336:31)
+    at Function._load (module.js:297:12)
+    at Array.<anonymous> (module.js:423:10)
+    at EventEmitter._tickCallback (node.js:126:26)
+Enki:~ $
+    
+    
+====================================
+Example: Basic assertions
+
+> var assert = require('assert');
+> assert.equal(1, true, 'Truthy');
+> assert.notEqual(1, true, 'Truthy');
+AssertionError: Truthy
+    at [object Context]:1:8
+    at Interface.<anonymous> (repl.js:171:22)
+    at Interface.emit (events.js:64:17)
+    at Interface._onLine (readline.js:153:10)
+    at Interface._line (readline.js:408:8)
+    at Interface._ttyWrite (readline.js:585:14)
+    at ReadStream.<anonymous> (readline.js:73:12)
+    at ReadStream.emit (events.js:81:20)
+    at ReadStream._emitKey (tty_posix.js:307:10)
+    at ReadStream.onData (tty_posix.js:70:12)
+>
+    
+    
+====================================
+Example: Testing whether something is truthy with assert.ok( )
+
+> assert.ok('This is a string', 'Strings that are not empty are truthy');
+> assert.ok(0, 'Zero is not truthy');
+AssertionError: Zero is not truthy
+    at [object Context]:1:8
+    at Interface.<anonymous> (repl.js:171:22)
+    at Interface.emit (events.js:64:17)
+    at Interface._onLine (readline.js:153:10)
+    at Interface._line (readline.js:408:8)
+    at Interface._ttyWrite (readline.js:585:14)
+    at ReadStream.<anonymous> (readline.js:73:12)
+    at ReadStream.emit (events.js:81:20)
+    at ReadStream._emitKey (tty_posix.js:307:10)
+    at ReadStream.onData (tty_posix.js:70:12)
+>
+    
+    
+====================================
+Example: Using assert.throws( ) and assert.doesNotThrow( ) to check for
+      exception handling
+
+> assert.throws(
+... function() {
+...   throw new Error("Seven Fingers. Ten is too mainstream.");
+... });
+> assert.doesNotThrow(
+... function() {
+...   throw new Error("I lived in the ocean way before Nemo");
+... });
+AssertionError:   "Got unwanted exception (Error).."
+    at Object._throws (assert.js:281:5)
+    at Object.doesNotThrow (assert.js:299:11)
+    at [object Context]:1:8
+    at Interface.<anonymous> (repl.js:171:22)
+    at Interface.emit (events.js:64:17)
+    at Interface._onLine (readline.js:153:10)
+    at Interface._line (readline.js:408:8)
+    at Interface._ttyWrite (readline.js:585:14)
+    at ReadStream.<anonymous> (readline.js:73:12)
+    at ReadStream.emit (events.js:81:20)
+>
+    
+    
+====================================
+Example: Using vm to run code
+
+> var vm = require('vm');
+> vm.runInThisContext("1+1");
+2
+    
+    
+====================================
+Example: Accessing the local scope to show the differences between vm and
+      eval( )
+
+> var vm = require('vm'),
+... e = 0,
+... v = 0;
+> eval(e=e+1);
+1
+> e
+1
+> vm.runInThisContext('v=v+1');
+ReferenceError: v is not defined
+    at evalmachine.<anonymous>:1:1
+    at [object Context]:1:4
+    at Interface.<anonymous> (repl.js:171:22)
+    at Interface.emit (events.js:64:17)
+    at Interface._onLine (readline.js:153:10)
+    at Interface._line (readline.js:408:8)
+    at Interface._ttyWrite (readline.js:585:14)
+    at ReadStream.<anonymous> (readline.js:73:12)
+    at ReadStream.emit (events.js:81:20)
+    at ReadStream._emitKey (tty_posix.js:307:10)
+>
+> vm.runInThisContext('v=0');
+0
+> vm.runInThisContext('v=v+1');
+1
+>
+0
+    
+    
+====================================
+Example: Passing a context in to vm
+
+> var vm = require('vm');
+> var context = { alphabet:"" };
+> vm.runInNewContext("alphabet+='a'", context);
+'a'
+> vm.runInNewContext("alphabet+='b'", context);
+'ab'
+> context
+{ alphabet: 'ab' }
+>
+    
+    
+====================================
+Example: Compiling code into a script with vm
+
+> var vm = require('vm');
+> var fs = require('fs');
+> 
+> var code = fs.readFileSync('example.js');
+> code.toString();
+'console.log(output);\n'
+>
+> var script = vm.createScript(code);
+> script.runInNewContext({output:"Kick Ass"});
+ReferenceError: console is not defined
+    at undefined:1:1
+    at [object Context]:1:8
+    at Interface.<anonymous> (repl.js:171:22)
+    at Interface.emit (events.js:64:17)
+    at Interface._onLine (readline.js:153:10)
+    at Interface._line (readline.js:408:8)
+    at Interface._ttyWrite (readline.js:585:14)
+    at ReadStream.<anonymous> (readline.js:73:12)
+    at ReadStream.emit (events.js:81:20)
+    at ReadStream._emitKey (tty_posix.js:307:10)
+> script.runInNewContext({"console":console,"output":"Kick Ass"});
+Kick Ass
+    
+    
+==================

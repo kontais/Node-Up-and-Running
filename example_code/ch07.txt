@@ -1,0 +1,544 @@
+chapter: Important External Modules
+==================
+Example: Creating a simple Express app
+
+var express = require('express');
+
+var app = express.createServer();
+
+app.get('/', function(req, res) {
+  res.send('hello world');
+});
+
+app.listen(9001);
+    
+    
+====================================
+Example: Route with variable and optional flag
+
+var express = require('express');
+var app = express.createServer();
+
+app.get('/:id?', function(req, res) {
+  if(req.params.id) {
+    res.send(req.params.id);
+  } else {
+    res.send('oh hai');
+  }
+});
+
+app.listen(9001);
+    
+    
+====================================
+Example: Using wildcards in routes
+
+app.get('/a*', function(req,res) {
+  res.send('a');
+  //matches /afoo /a.bar /a/qux etc.
+});
+
+app.get('/b*/c*d', function(req,res) {
+  res.send('b');
+  //matches /b/cd /b/cfood /b//c/d/ etc.
+  //does not match /b/c/d/foo
+});
+
+app.get('*', function(req, res) {
+  res.send('*');
+  //matches /a /c /b/cd /b/c/d /b/c/d/foo
+  //does not match /afoo /bfoo/cbard
+});
+    
+    
+====================================
+Example: Using a regex to define a route
+
+var express = require('express');
+var app = express.createServer();
+
+app.get(/\/(\d+)/, function(req, res) {
+  res.send(req.params[0]);
+});
+
+app.listen(9001);
+    
+    
+====================================
+Example: Use regex to be more specific about variable types
+
+var express = require('express');
+var app = express.createServer();
+
+app.get('/:id(\\d+)', function(req, res) {
+  res.send(req.params[0]);
+});
+
+app.listen(9001);
+    
+    
+====================================
+Example: Passing control to another route
+
+app.get('/users/:id', function(req, res, next){
+  var id = req.params.id;
+
+  if (checkPermission(id)) {
+    // show private page
+  } else {
+    next();
+  }
+});
+
+app.get('/users/:id', function(req, res){
+  // show public user page 
+});
+    
+    
+====================================
+Example: Using app.all( ) to select multiple HTTP verbs and routes and
+        then pass control back
+
+var express = require('express');
+
+var app = express.createServer();
+
+var users = [{ name: 'tj' }, { name: tom }];
+
+app.all('/user/:id/:op?', function(req, res, next){
+  req.user = users[req.params.id];
+
+  if (req.user) {
+    next();
+  } else {
+    next(new Error('Cannot find user with ID: ' + req.params.id));
+  }
+});
+
+app.get('/user/:id', function(req, res){
+  res.send('Viewing ' + req.user.name);
+});
+
+app.get('/user/:id/edit', function(req, res){
+  res.send('Editing ' + req.user.name);
+});
+
+app.put('/user/:id', function(req, res){
+  res.send('Updating ' + req.user.name);
+});
+
+app.get('*', function(req, res){
+  res.send('Danger, Will Robinson!', 404);
+});
+
+app.listen(3000);
+    
+    
+====================================
+Example: Optional and required route extensions
+
+var express = require('express');
+var app = express.createServer();
+
+app.get('/users/:id.:format?', function(req, res) {
+  res.send(req.params.id + "<br/>" + req.params.format);
+  // Responds to:
+  // /users/15
+  // /users/15.xml
+  // /users/15.json
+});
+
+app.get('/books/:id.:format((json|xml))', function(req, res) {
+  res.send(req.params.id + "<br/>" + req.params.format);
+  // Responds to:
+  // /books/7.json
+  // /books/7.xml
+  // But NOT to:
+  // /books/7
+  // /books/7.txt
+});
+
+app.listen(8080);
+    
+    
+====================================
+Example: Handling forms using Express
+
+var express = require('express');
+var app = express.createServer();
+
+app.use(express.limit('1mb'));
+app.use(express.bodyParser());
+app.use(express.methodOverride());
+
+app.get('/', function(req, res) {
+  res.send('<form method="post" action="/">' +
+           '<input type="hidden" name="_method" value="put" />' +
+           'Your Name: <input type="text" name="username" />' +
+           '<input type="submit" />' +
+           '</form>');
+});
+
+app.put('/', function(req, res) {
+  res.send('Welcome, ' + req.body.username);
+});
+
+app.listen(8080);
+    
+    
+====================================
+Example: Using a basic Jade template in Express
+
+var express = require('express');
+var app = express.createServer();
+
+app.get('/', function(req, res) {
+  res.render('index.jade', { pageTitle: 'Jade Example', layout: false });
+});
+
+app.listen(8080);
+    
+    
+====================================
+npm install jade
+    
+    
+====================================
+Example: A basic Jade file for Express
+
+!!! 5
+html(lang="en")
+  head
+    title =pageTitle
+  body
+    h1 Hello, World
+    p This is an example of Jade.
+    
+    
+====================================
+Example: A basic Jade file for Express
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Jade Example</title>
+  </head>
+
+  <body>
+    <h1>Hello, World</h1>
+    <p>This is an example of Jade.</p>
+  </body>
+</html>
+    
+    
+====================================
+Example: Defining global template engines in Express
+
+var express = require('express');
+var app = express.createServer();
+
+app.set('view engine', 'jade');
+
+app.get('/', function(req, res) {
+  res.render('battlestar')
+});
+    
+    
+====================================
+Example: A Jade layout file in Express
+
+html
+  body
+    h1 Battlestar Galactica Fan Page
+    != body
+    
+    
+====================================
+Example: A Jade partial view in Express
+
+p Welcome to the fan page.
+    
+    
+====================================
+<html>
+  <body>
+    <h1>Battlestar Galactica Fan Page</h1>
+    <p>Welcome to the fan page.</p>
+  </body>
+</html>
+    
+    
+====================================
+Example: Middleware factories in Express
+
+var express = require('express');
+var app = express.createServer(
+  express.cookieParser(),
+  express.session({ secret: 'secret key' })
+);
+
+var roleFactory = function(role) {
+  return function(req, res, next) {
+    if ( req.session.role && req.session.role.indexOf(role) != -1 ) {
+      next();    } else {
+      res.send('You are not authenticated.');
+    }
+  }
+};
+
+app.get('/', roleFactory('admin'), function(req, res) {
+  res.send('Welcome to Express!');
+});
+
+app.get('/auth', function(req, res) {
+  req.session.role = 'admin';
+  res.send('You have been authenticated.');
+});
+
+app.listen(8080);
+    
+    
+====================================
+var powerUsers = [roleFactory('admin'),roleFactory('client')];
+app.get('/', powerUsers, function(req, res) {
+  res.send('Welcome to Express!');
+});
+    
+    
+====================================
+Example: Creating a Socket.IO server
+
+    var http = require('http'), 
+    io = require('socket.io');
+    
+server = http.createServer();
+server.on('request', function(req, res){
+  //Typical HTTP server stuff
+  res.writeHead(200, {'Content-Type': 'text/plain'});
+  res.end('Hello World');
+});
+
+server.listen(80);
+
+var socket = io.listen(server);
+
+socket.on('connection', function(client){
+  console.log('Client connected');
+});
+    
+    
+====================================
+Example: A small web page to interact with a Socket.IO server
+
+<!DOCTYPE html>
+<html>
+  <body>
+    <script src="/socket.io/socket.io.js"></script> 
+    <script> 
+      var socket = io.connect('http://localhost:8080');
+      socket.on('message', function(data){ console.log(data) }) 
+    </script> 
+  </body>
+</html>
+    
+    
+====================================
+Example: A simple Socket.IO server
+
+    var http = require('http'), 
+    io = require('socket.io'),
+    fs = require('fs');
+
+var sockFile = fs.readFileSync('socket.html');
+
+server = http.createServer();
+server.on('request', function(req, res){
+  res.writeHead(200, {'content-type': 'text/html'});
+  res.end(sockFile);  
+});
+
+server.listen(8080);
+
+var socket = io.listen(server);
+
+socket.on('connection', function(client){
+  console.log('Client connected');
+  client.send('Welcome client ' + client.sessionId);
+});
+    
+    
+====================================
+Example: A modified web page to interact with Socket.IO
+        namespaces
+
+<!DOCTYPE html>
+<html>
+  <body>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      var upandrunning = io.connect('http://localhost:8080/upandrunning');
+      var weather = io.connect('http://localhost:8080/weather');
+      upandrunning.on('message', function(data){
+        document.write('<br /><br />Node: Up and Running Update<br />');
+        document.write(data);
+      });
+      weather.on('message', function(data){
+        document.write('<br /><br />Weather Update<br />');
+        document.write(data);
+      });
+    </script>
+  </body>
+</html>
+    
+    
+====================================
+Example: A namespace-enabled Socket.IO server
+
+var sockFile = fs.readFileSync('socket.html');
+
+server = http.createServer();
+server.on('request', function(req, res){
+  res.writeHead(200, {'content-type': 'text/html'});
+  res.end(sockFile);
+});
+
+server.listen(8080);
+
+var socket = io.listen(server);
+
+socket.of('/upandrunning')
+  .on('connection', function(client){
+    console.log('Client connected to Up and Running namespace.');
+    client.send("Welcome to 'Up and Running'");
+});
+
+socket.of('/weather')
+  .on('connection', function(client){
+    console.log('Client connected to Weather namespace.');
+    client.send("Welcome to 'Weather Updates'");
+});
+    
+    
+====================================
+Example: Attaching Socket.IO to an Express application: client
+        code
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+var socket = io.connect('http://localhost:8080');
+socket.on('news', function(data) {
+  document.write('<h1>' + data.title + '</h1>' );
+  document.write('<p>' + data.contents + '</p>' );
+  if ( data.allowResponse ) {
+    socket.emit('scoop', { contents: 'News data received by client.' });
+  }
+});
+</script>
+    
+    
+====================================
+Example: Attaching Socket.IO to an Express application: server
+        code
+
+var app = require('express').createServer(),
+     io = require('socket.io').listen(app);
+
+app.listen(8080);
+
+app.get('/', function(req,res) {
+  res.sendfile(__dirname + '/socket_express.html');
+});
+
+io.sockets.on('connection', function(socket) {
+  socket.emit('news', {
+    title: 'Welcome to World News',    contents: 'This news flash was sent from Node.js!',
+    allowResponse: true
+  });
+  socket.on('scoop', function(data) {
+    socket.emit('news', {
+      title: 'Circular Emissions Worked',
+      contents: 'Received this content: ' + data.contents
+    });
+  });
+});
+    
+    
+====================================
+Example: Client HTML (Jade template): Socket.IO sessions
+
+!!! 5
+html(lang='en')
+  head
+    script(type='text/javascript', src='/socket.io/socket.io.js')
+    script(type='text/javascript')
+      var socket = io.connect('http://localhost:8080');
+      socket.on('emailchanged', function(data) {
+        document.getElementById('email').value = data.email;
+      });
+      var submitEmail = function(form) {
+        socket.emit('emailupdate', {email: form.email.value});
+        return false;
+      };
+  body
+    h1 Welcome!
+
+    form(onsubmit='return submitEmail(this);')
+      input(id='email', name='email', type='text', value=locals.email)
+      input(type='submit', value='Change Email')
+    
+    
+====================================
+Example: Sharing session data between Express and Socket.IO
+
+var io = require('socket.io');
+var express = require('express');
+var app = express.createServer();
+var store = new express.session.MemoryStore;
+var utils = require('connect').utils;
+var Session = require('connect').middleware.session.Session;
+
+app.configure(function() {
+  app.use(express.cookieParser());
+  app.use(express.session({secret: 'secretKey', key: 'express.sid', store: store}));
+  app.use(function(req, res) {
+    var sess = req.session;
+    res.render('socket.jade', {
+      email: sess.email || ''
+    });
+  });
+});
+
+// Start the app
+app.listen(8080);
+
+var sio = io.listen(app);
+
+sio.configure(function() {
+  sio.set('authorization', function (data, accept ) {
+    var cookies = utils.parseCookie(data.headers.cookie);
+    data.sessionID = cookies['express.sid'];
+    data.sessionStore = store;
+    store.get(data.sessionID, function(err, session) {
+      if ( err || !session ) {
+        return accept("Invalid session", false);
+      }
+      data.session = new Session(data, session);
+      accept(null,true);
+    });
+  });
+
+  sio.sockets.on('connection', function(socket) {
+    var session = socket.handshake.session;
+    socket.join(socket.handshake.sessionId);
+    socket.on('emailupdate', function(data) {
+      session.email = data.email;
+      session.save();
+      sio.sockets.in(socket.handshake.sessionId).emit('emailchanged', {
+        email: data.email
+      });
+    });
+  });
+});
+    
+    
+==================

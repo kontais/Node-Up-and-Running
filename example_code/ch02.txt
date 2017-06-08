@@ -1,0 +1,501 @@
+chapter: Doing Interesting Things
+==================
+Example: Creating a new TCP server
+
+var net = require('net')
+
+var chatServer = net.createServer()
+
+chatServer.on('connection', function(client) {
+  client.write('Hi!\n');
+  client.write('Bye!\n');
+
+  client.end()
+})
+
+chatServer.listen(9000)
+    
+    
+====================================
+Example: Connecting to a Node TCP server with Telnet
+
+Console Window 1
+----------------
+Enki:~ $ node chat.js
+Chat server started
+
+
+Console Window 2
+----------------
+Last login: Tue Jun  7 20:35:14 on ttys000
+Enki:~ $ telnet 127.0.0.1 9000
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is '^]'.
+Hi!
+Bye!
+Connection closed by foreign host.
+Enki:~ $
+    
+    
+====================================
+Example: Listening to each connection
+
+var net = require('net')
+
+var chatServer = net.createServer()
+
+chatServer.on('connection', function(client) {
+  client.write('Hi!\n');
+
+  client.on('data', function(data) {
+    console.log(data)
+  })
+
+})
+
+chatServer.listen(9000)
+    
+    
+====================================
+Example: Sending data to the server from Telnet
+
+Console 1
+-------------
+
+Enki:~ $ node chat.js 
+Chat server started
+<Buffer 48 65 6c 6c 6f 2c 20 79 6f 75 72 73 65 6c 66 0d 0a>
+
+Console 2
+------------
+Enki:~ $ telnet 127.0.0.1 9000
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is '^]'.
+Hi!
+Hello, yourself
+    
+    
+====================================
+Example: Communicating between clients
+
+var net = require('net')
+
+var chatServer = net.createServer(),
+    clientList = []
+
+chatServer.on('connection', function(client) {
+  client.write('Hi!\n');
+
+  clientList.push(client)
+
+  client.on('data', function(data) {
+    for(var i=0;i<clientList.length;i+=1) {
+      //write this data to all clients
+      clientList[i].write(data)
+    }
+  })
+
+})
+
+chatServer.listen(9000)
+    
+    
+====================================
+Example: Sending messages between clients
+
+Console 1
+------------
+
+Enki:~ $ node chat.js 
+
+
+Console 2
+------------
+
+Enki:~ $ telnet 127.0.0.1 9000
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is '^]'.
+Hi!
+Hello, yourself
+Hello, yourself
+
+
+Console 3
+------------
+
+Enki:~ $ telnet 127.0.0.1 9000
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is '^]'.
+Hi!
+Hello, yourself
+    
+    
+====================================
+Example: Improving the sending of messages
+
+var net = require('net')
+
+var chatServer = net.createServer(),
+    clientList = []
+
+chatServer.on('connection', function(client) {
+  client.name = client.remoteAddress + ':' + client.remotePort
+  client.write('Hi ' + client.name + '!\n');
+
+  clientList.push(client)
+
+  client.on('data', function(data) {
+    broadcast(data, client)
+  })
+
+})
+
+function broadcast(message, client) {
+  for(var i=0;i<clientList.length;i+=1) {
+    if(client !== clientList[i]) {
+      clientList[i].write(client.name + " says " + message)
+    }
+  }
+}
+
+chatServer.listen(9000)
+    
+    
+====================================
+Example: Running the improved chat server
+
+Console 1
+---------
+
+Enki:~ $ node chat.js
+
+Console 2
+---------
+
+Enki:~ $ telnet 127.0.0.1 9000
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is '^]'.
+Hi 127.0.0.1:56022!
+Hello
+127.0.0.1:56018 says Back atcha
+
+Console 3
+---------
+
+Enki:~ $ telnet 127.0.0.1 9000
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is '^]'.
+Hi 127.0.0.1:56018!
+127.0.0.1:56022 says Hello
+Back atcha
+    
+    
+====================================
+Example: Causing the server to fail by disconnecting a client
+
+Console 1
+----------
+
+Enki:~ $ node book-chat.js  
+
+net.js:392 
+    throw new Error('Socket is not writable');
+          ^
+Error: Socket is not writable
+    at Socket._writeOut (net.js:392:11)
+    at Socket.write (net.js:378:17)
+    at broadcast (/Users/sh1mmer/book-chat.js:21:21)
+    at Socket.<anonymous> (/Users/sh1mmer/book-chat.js:13:5)
+    at Socket.emit (events.js:64:17)
+    at Socket._onReadable (net.js:679:14)
+    at IOWatcher.onReadable [as callback] (net.js:177:10)
+Enki:~ $
+
+Console 2
+---------
+
+Enki:~ $ telnet 127.0.0.1 9000 
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is '^]'.
+Hi 127.0.0.1:56910!
+^]
+telnet> quit 
+Connection closed.
+Enki:~ $ 
+
+Console 3
+---------
+
+Enki:~ $ telnet 127.0.0.1 9000 
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is '^]'.
+Hi 127.0.0.1:56911!
+You still there? 
+Connection closed by foreign host. 
+Enki:~ $
+    
+    
+====================================
+Example: Making the chat server more robust
+
+chatServer.on('connection', function(client) {
+  client.name = client.remoteAddress + ':' + client.remotePort
+  client.write('Hi ' + client.name + '!\n');
+
+  clientList.push(client)
+
+  client.on('data', function(data) {
+    broadcast(data, client)
+  })
+
+  client.on('end', function() {
+    clientList.splice(clientList.indexOf(client), 1)
+  })
+})
+    
+    
+====================================
+Example: Checking the write status of sockets
+
+function broadcast(message, client) {
+  var cleanup = []
+  for(var i=0;i<clientList.length;i+=1) {
+    if(client !== clientList[i]) {
+
+      if(clientList[i].writable) {
+        clientList[i].write(client.name + " says " + message)
+      } else {
+        cleanup.push(clientList[i])
+        clientList[i].destroy()
+      }
+
+    }
+  }  //Remove dead Nodes out of write loop to avoid trashing loop index 
+  for(i=0;i<cleanup.length;i+=1) {
+    clientList.splice(clientList.indexOf(cleanup[i]), 1)
+  }
+}
+    
+    
+====================================
+Example: Logging errors
+
+chatServer.on('connection', function(client) {
+  client.name = client.remoteAddress + ':' + client.remotePort
+  client.write('Hi ' + client.name + '!\n');
+  console.log(client.name + ' joined')
+
+  clientList.push(client)
+
+  client.on('data', function(data) {
+    broadcast(data, client)
+  })
+
+  client.on('end', function() {
+    console.log(client.name + ' quit')
+    clientList.splice(clientList.indexOf(client), 1)
+  })
+  
+  client.on('error', function(e) {
+    console.log(e)
+  })
+})
+    
+    
+====================================
+Example: Installing the Express module
+
+Enki:~ $ npm install express
+express@2.3.12 ./node_modules/express 
+├── mime@1.2.2
+├── connect@1.5.1
+└── qs@0.1.0
+Enki:~ $
+    
+    
+====================================
+Example: A basic web server with Express
+
+var express = require('express')
+
+var app = express.createServer()
+
+app.get('/', function(req, res) {
+  res.send('Welcome to Node Twitter')
+})
+
+app.listen(8000)
+    
+    
+====================================
+Example: Adding a basic API
+
+var express = require('express')
+
+var app = express.createServer()
+app.listen(8000)
+
+var tweets = []
+
+app.get('/', function(req, res) {
+  res.send('Welcome to Node Twitter')
+})
+
+app.post('/send', express.bodyParser(), function(req, res) {
+  if (req.body && req.body.tweet) {
+    tweets.push(req.body.tweet)
+    res.send({status:"ok", message:"Tweet received"})
+  } else {
+    //no tweet?
+    res.send({status:"nok", message:"No tweet received"})
+  }
+})
+
+app.get('/tweets', function(req,res) {
+  res.send(tweets)
+})
+    
+    
+====================================
+Example: A test for the POST API
+
+var http = require('http'),
+    assert = require('assert')
+
+var opts = {
+  host: 'localhost',
+  port: 8000,
+  path: '/send',
+  method: 'POST',
+  headers: {'content-type':'application/x-www-form-urlencoded'}
+}
+
+var req = http.request(opts, function(res) {
+  res.setEncoding('utf8')
+
+  var data = ""
+  res.on('data', function(d) {
+    data += d
+  })
+
+  res.on('end', function() {
+    assert.strictEqual(data, '{"status":"ok","message":"Tweet received"}')
+  })
+})
+
+req.write('tweet=test')
+req.end()
+    
+    
+====================================
+Example: The basic folder structure of an Express app
+
+.
+├── app.js
+├── public
+└── views
+    └── partials
+    
+    
+====================================
+Example: EJS layout file
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <%- partial('partials/stylesheet', stylesheets) %>
+      <title><%= title %></title>
+    </head>
+    <body>
+        <h1><%= header %></h1>
+        <%- body %>
+    </body>
+</html>
+    
+    
+====================================
+Example: Rendering the index template from the '/' route
+
+app.get('/', function(req, res) {
+  var title = 'Chirpie',
+      header = 'Welcome to Chirpie'
+
+  res.render('index', {
+    locals: {
+      'title': title,
+      'header': header,
+      'tweets': tweets,
+      stylesheets: ['/public/style.css']
+    }
+  })
+})
+    
+    
+====================================
+Example: An index template to show tweets and let people post new
+      tweets
+
+<form action="/send" method="POST">
+  <input type="text" length="140" name="tweet">
+  <input type="submit" value="Tweet">
+</form>
+<%- partial('partials/chirp', tweets) %>
+    
+    
+====================================
+Example: A partial template for rendering chirps
+
+<p><%= chirp %></p>
+    
+    
+====================================
+Example: A partial template for rendering stylesheets
+
+<link rel="stylesheet" type="text/css" href="<%- stylesheet %>">
+    
+    
+====================================
+Example: A small function to check for text/html in an accept
+      header
+
+function acceptsHtml(header) {
+  var accepts = header.split(',')
+  for(i=0;i<accepts.length;i+=0) {
+    if (accepts[i] === 'text/html') { return true }
+  }
+
+  return false
+}
+    
+    
+====================================
+Example: Redirect web browsers from the /send endpoint
+
+app.post('/send', express.bodyParser(), function(req, res) {
+  if (req.body && req.body.tweet) {
+
+    tweets.push(req.body.tweet)
+    
+    if(acceptsHtml(req.headers['accept'])) {
+      res.redirect('/', 302)
+    } else {
+      res.send({status:"ok", message:"Tweet received"})
+    }
+
+  } else {
+    //no tweet?
+    res.send({status:"nok", message:"No tweet received"})
+  }
+})
+    
+    
+==================

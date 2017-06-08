@@ -1,0 +1,176 @@
+chapter: A Very Brief Introduction to Node.js
+==================
+Example: Unpacking the code
+
+enki:Downloads $ tar xzf node-v0.6.6.tar.gz 
+enki:Downloads $ cd node-v0.6.6
+enki:node-v0.6.6 $ ls
+AUTHORS       Makefile       common.gypi     doc        test
+BSDmakefile   Makefile-gyp   configure       lib        tools
+ChangeLog     README.md      configure-gyp   node.gyp   vcbuild.bat
+LICENSE       benchmark      deps            src        wscript
+enki:node-v0.6.6 $
+    
+    
+====================================
+Example: Configuring the Node install
+
+enki:node-v0.6.6 $ ./configure
+Checking for program g++ or c++          : /usr/bin/g++ 
+Checking for program cpp                 : /usr/bin/cpp 
+Checking for program ar                  : /usr/bin/ar 
+Checking for program ranlib              : /usr/bin/ranlib 
+Checking for g++                         : ok  
+Checking for program gcc or cc           : /usr/bin/gcc 
+Checking for gcc                         : ok  
+Checking for library dl                  : yes 
+Checking for openssl                     : not found 
+Checking for function SSL_library_init   : yes 
+Checking for header openssl/crypto.h     : yes 
+Checking for library util                : yes 
+Checking for library rt                  : not found 
+Checking for fdatasync(2) with c++       : no 
+'configure' finished successfully (0.991s)
+enki:node-v0.6.6 $
+    
+    
+====================================
+Example: Compiling Node with the make command
+
+enki:node-v0.6.6 $ make
+Waf: Entering directory `/Users/sh1mmer/Downloads/node-v0.6.6/out'
+DEST_OS: darwin
+DEST_CPU: x64
+Parallel Jobs: 1
+Product type: program
+[ 1/35] copy: src/node_config.h.in -> out/Release/src/node_config.h
+[ 2/35] cc: deps/http_parser/http_parser.c -> out/Release/deps/http_parser/http_parser_3.o
+/usr/bin/gcc -rdynamic -pthread -arch x86_64 -g -O3 -DHAVE_OPENSSL=1 -D_LARGEFILE_SOURCE ...
+[ 3/35] src/node_natives.h: src/node.js lib/dgram.js lib/console.js lib/buffer.js ...
+[ 4/35] uv: deps/uv/include/uv.h -> out/Release/deps/uv/uv.a
+
+...
+
+f: Leaving directory `/Users/sh1mmer/Downloads/node-v0.6.6/out'
+'build' finished successfully (2m53.573s)
+-rwxr-xr-x  1 sh1mmer  staff   6.8M Jan  3 21:56 out/Release/node
+enki:node-v0.6.6 $
+    
+    
+====================================
+Example: Installing Node for the whole system
+
+enki:node-v0.6.6 $ sudo make install
+Password:
+Waf: Entering directory `/Users/sh1mmer/Downloads/node-v0.6.6/out'
+DEST_OS: darwin
+DEST_CPU: x64
+Parallel Jobs: 1
+Product type: program
+* installing deps/uv/include/ares.h as /usr/local/include/node/ares.h
+* installing deps/uv/include/ares_version.h as /usr/local/include/node/ares_version.h
+* installing deps/uv/include/uv.h as /usr/local/include/node/uv.h
+
+...
+
+* installing out/Release/src/node_config.h as /usr/local/include/node/node_config.h
+Waf: Leaving directory `/Users/sh1mmer/Downloads/node-v0.6.6/out'
+'install' finished successfully (0.915s)
+enki:node-v0.6.6 $
+    
+    
+====================================
+Example: Installing Node for a local user
+
+enki:node-v0.6.6 $ mkdir ~/local
+enki:node-v0.6.6 $ ./configure --prefix=~/local
+Checking for program g++ or c++          : /usr/bin/g++ 
+Checking for program cpp                 : /usr/bin/cpp 
+
+...
+
+'configure' finished successfully (0.501s)
+enki:node-v0.6.6 $ make && make install
+Waf: Entering directory `/Users/sh1mmer/Downloads/node-v0.6.6/out'
+DEST_OS: darwin
+DEST_CPU: x64
+
+...
+
+* installing out/Release/node as /Users/sh1mmer/local/bin/node
+* installing out/Release/src/node_config.h as /Users/sh1mmer/local/include/node/...
+Waf: Leaving directory `/Users/sh1mmer/Downloads/node-v0.6.6/out'
+'install' finished successfully (0.747s)
+enki:node-v0.6.6 $
+    
+    
+====================================
+Example: Starting Node REPL and trying some JavaScript
+
+$Enki:~ $ node
+> 3 > 2 > 1
+false
+> true == 1
+true
+> true === 1
+false
+    
+    
+====================================
+Example: Using the metafeatures in Node REPL
+
+> console.log('Hello World');
+Hello World
+> .help
+.clear  Break, and also clear the local context.
+.exit   Exit the prompt
+.help   Show repl options
+> .clear
+Clearing context...
+> .exit
+Enki:~ $
+    
+    
+====================================
+Example: Setting and enumerating objects with REPL
+
+Enki:~ $ node
+> myObj = {};
+{}
+> myObj.list = ["a", "b", "c"];
+[ 'a', 'b', 'c' ]
+> myObj.doThat = function(first, second, third) { console.log(first); };
+[Function]
+> myObj
+{ list: [ 'a', 'b', 'c' ]
+, doThat: [Function]
+}
+>
+    
+    
+====================================
+Example: A Hello World Node.js web server
+
+var http = require('http'); 
+http.createServer(function (req, res) { 
+    res.writeHead(200, {'Content-Type': 'text/plain'}); 
+    res.end('Hello World\n'); 
+}).listen(8124, "127.0.0.1"); 
+console.log('Server running at http://127.0.0.1:8124/');
+    
+    
+====================================
+Example: Running the Hello World example
+
+Enki:~ $ node
+> var http = require('http'); 
+> http.createServer(function (req, res) { 
+...     res.writeHead(200, {'Content-Type': 'text/plain'}); 
+...     res.end('Hello World\n'); 
+...   }).listen(8124, "127.0.0.1"); 
+> console.log('Server running at http://127.0.0.1:8124/'); 
+Server running at http://127.0.0.1:8124/ 
+node>
+    
+    
+==================

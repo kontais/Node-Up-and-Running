@@ -1,0 +1,339 @@
+chapter: Building Robust Node Applications
+==================
+Example: Event-loop blocking code
+
+EE = require('events').EventEmitter;
+ee = new EE();
+
+die = false;
+
+ee.on('die', function() {
+    die = true;
+});
+
+setTimeout(function() {
+    ee.emit('die');
+}, 100);
+
+while(!die) {
+}
+
+console.log('done');
+    
+    
+====================================
+Example: A basic HTTP server
+
+var http = require('http');
+http.createServer(function (req, res) {
+  res.writeHead(200, {'Content-Type': 'text/plain'});
+  res.end('Hello World\n');
+}).listen(8124, "127.0.0.1");
+console.log('Server running at http://127.0.0.1:8124/');
+    
+    
+====================================
+Example: Unordered parallel I/O in Node
+
+fs.readFile('foo.txt', 'utf8', function(err, data) {
+  console.log(data);
+};
+fs.readFile('bar.txt', 'utf8', function(err, data) {
+  console.log(data);
+};
+    
+    
+====================================
+Example: Nesting callbacks to produce serial requests
+
+server.on('request', function(req, res) {
+  //get session information from memcached
+  memcached.getSession(req, function(session) {
+    //get information from db
+    db.get(session.user, function(userData) {
+      //some other web service call
+      ws.get(req, function(wsData) {
+        //render page
+        page = pageRender(req, session, userData, wsData);
+        //output the response
+        res.write(page);
+      });
+    });
+  });
+});
+    
+    
+====================================
+Example: Naming function calls in callbacks
+
+server.on('request', getMemCached(req, res) {
+  memcached.getSession(req, getDbInfo(session) {
+    db.get(session.user, getWsInfo(userData) {
+      ws.get(req, render(wsData) {
+        //render page
+        page = pageRender(req, session, userData, wsData);
+        //output the response
+        res.write(page);
+      });
+    });
+  });
+});
+    
+    
+====================================
+Example: Using declared functions to separate out code
+
+var render = function(wsData) {
+  page = pageRender(req, session, userData, wsData);
+}; 
+
+var getWsInfo = function(userData) {
+  ws.get(req, render);
+};
+
+var getDbInfo = function(session) {
+  db.get(session.user, getWsInfo);
+};
+
+var getMemCached = function(req, res) {
+  memcached.getSession(req, getDbInfo);
+};
+    
+    
+====================================
+Example: Encapsulating within a callback
+
+       server.on('request', function(req, res) {
+
+  var render = function(wsData) {
+    page = pageRender(req, session, userData, wsData);
+  };
+
+  var getWsInfo = function(userData) {
+    ws.get(req, render);
+  };
+
+  var getDbInfo = function(session) {
+    db.get(session.user, getWsInfo);
+  };
+
+  var getMemCached = function(req, res) {
+    memcached.getSession(req, getDbInfo);
+  };
+
+}
+    
+    
+====================================
+Example: Passing changes between functions
+
+       var AwesomeClass = function() {
+  this.awesomeProp = 'awesome!'
+  this.awesomeFunc = function(text) {
+    console.log(text + ' is awesome!')
+  }
+}
+
+var awesomeObject = new AwesomeClass()
+
+function middleware(func) {
+  oldFunc = func.awesomeFunc
+  func.awesomeFunc = function(text) {
+    text = text + ' really'
+    oldFunc(text)
+  }
+}
+
+function anotherMiddleware(func) {
+  func.anotherProp = 'super duper' 
+}
+
+function caller(input) {
+  input.awesomeFunc(input.anotherProp)
+}
+
+middleware(awesomeObject)
+anotherMiddleware(awesomeObject)
+caller(awesomeObject)
+    
+    
+====================================
+Example: Trying to catch an error in a callback and failing
+
+var http = require('http')
+
+var opts = {
+  host: 'sfnsdkfjdsnk.com',
+  port: 80,
+  path: '/'
+}
+
+try {
+  http.get(opts, function(res) {
+    console.log('Will this get called?')
+  })
+}
+catch (e) {
+  console.log('Will we catch an error?')
+}
+    
+    
+====================================
+Example: Catching an I/O error with the error event
+
+var http = require('http')
+
+var opts = {
+  host: 'dskjvnfskcsjsdkcds.net',
+  port: 80,
+  path: '/'
+}
+
+var req = http.get(opts, function(res) {
+  console.log('This will never get called')
+})
+
+req.on('error', function(e) {
+  console.log('Got that pesky error trapped')
+})
+    
+    
+====================================
+Example: Using cluster to distribute work
+
+var cluster = require('cluster');
+var http = require('http');
+var numCPUs = require('os').cpus().length;
+
+if (cluster.isMaster) {
+  // Fork workers.
+  for (var i = 0; i < numCPUs; i++) {
+    cluster.fork();
+  }
+
+  cluster.on('death', function(worker) {
+    console.log('worker ' + worker.pid + ' died');
+  });
+} else {
+  // Worker processes have a http server.
+  http.Server(function(req, res) {
+    res.writeHead(200);
+    res.end("hello world\n");
+  }).listen(8000);
+}
+    
+    
+====================================
+Example: Forking a new worker when a death occurs
+
+      if (cluster.isMaster) {
+  //Fork workers.
+  for (var i=0; i<numCPUs; i++) {
+    cluster.fork();
+  }
+
+  cluster.on('death', function(worker) {
+    console.log('worker ' + worker.pid + ' died');
+    cluster.fork();
+  });
+}
+    
+    
+====================================
+Example: Monitoring worker health using message passing
+
+var cluster = require('cluster');
+var http = require('http');
+var numCPUs = require('os').cpus().length;
+
+var rssWarn = (12 * 1024 * 1024)
+  , heapWarn = (10 * 1024 * 1024)
+
+if(cluster.isMaster) {
+  for(var i=0; i<numCPUs; i++) {
+    var worker = cluster.fork();
+    worker.on('message', function(m) {
+      if (m.memory) {
+        if(m.memory.rss > rssWarn) {
+          console.log('Worker ' + m.process + ' using too much memory.')
+        }
+      }
+    })
+  }
+} else {
+  //Server
+  http.Server(function(req,res) {
+    res.writeHead(200);
+    res.end('hello world\n')
+  }).listen(8000)
+  //Report stats once a second
+  setInterval(function report(){
+    process.send({memory: process.memoryUsage(), process: process.pid});
+  }, 1000)
+}
+    
+    
+====================================
+Example: Killing zombie workers
+
+var cluster = require('cluster');
+var http = require('http');
+var numCPUs = require('os').cpus().length;
+
+var rssWarn = (50 * 1024 * 1024)
+  , heapWarn = (50 * 1024 * 1024)
+
+var workers = {}
+
+if(cluster.isMaster) {
+  for(var i=0; i<numCPUs; i++) {
+    createWorker()
+  }
+
+  setInterval(function() {
+    var time = new Date().getTime()
+    for(pid in workers) {
+      if(workers.hasOwnProperty(pid) &&
+         workers[pid].lastCb + 5000 < time) {
+
+        console.log('Long running worker ' + pid + ' killed')
+        workers[pid].worker.kill()
+        delete workers[pid]
+        createWorker()
+      }
+    }
+  }, 1000)
+} else {
+  //Server
+  http.Server(function(req,res) {
+    //mess up 1 in 200 reqs
+    if (Math.floor(Math.random() * 200) === 4) {
+      console.log('Stopped ' + process.pid + ' from ever finishing')
+      while(true) { continue }
+    }
+    res.writeHead(200);
+    res.end('hello world from '  + process.pid + '\n')
+  }).listen(8000)
+  //Report stats once a second
+  setInterval(function report(){
+    process.send({cmd: "reportMem", memory: process.memoryUsage(), process: process.pid})
+  }, 1000)
+}
+
+function createWorker() {
+  var worker = cluster.fork()
+  console.log('Created worker: ' + worker.pid)
+  //allow boot time
+  workers[worker.pid] = {worker:worker, lastCb: new Date().getTime()-1000}
+  worker.on('message', function(m) {
+    if(m.cmd === "reportMem") {
+      workers[m.process].lastCb = new Date().getTime()
+      if(m.memory.rss > rssWarn) {
+        console.log('Worker ' + m.process + ' using too much memory.')
+      }
+    }
+  })
+}
+    
+    
+==================
