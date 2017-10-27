@@ -10,10 +10,7 @@ chatServer.on('connection', function(client) {
 
   client.on('data', function(data) {
     for(var i=0;i<clientList.length;i+=1) {
-        if (client == clientList[i]) {
-            continue;
-        }
-      //write this data to other clients
+      //write this data to all clients
       clientList[i].write(data)
     }
   })
