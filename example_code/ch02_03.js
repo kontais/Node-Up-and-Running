@@ -13,7 +13,7 @@ chatServer.on('connection', function(client) {
         if (client == clientList[i]) {
             continue;
         }
-      //write this data to all clients
+      //write this data to other clients
       clientList[i].write(data)
     }
   })
